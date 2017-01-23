@@ -30,3 +30,7 @@ gems:
 exclude:
   - Gemfile
   - Gemfile.lock
+  - node_modules/
+  - npm-debug.log
+  - package.json
+  - server.js
