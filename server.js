@@ -13,7 +13,7 @@ const OidcStrategy = require('passport-openidconnect').Strategy;
 
 const port = process.env.port || 3000;
 const publicUrls = process.env.PUBLIC_URLS
-  ? process.env.PUBLIC_URLS.split(/\s*[,;]\s*/)
+  ? process.env.PUBLIC_URLS.split(/\s*[,;]\s*/).map(x => x.trim())
   : [];
 
 // Begin serving a potential previous version of the site immediately
@@ -35,7 +35,7 @@ passport.use(new OidcStrategy({
   tokenURL: process.env.TOKEN_URL,
   userInfoURL: process.env.USER_INFO_URL,
   callbackURL: process.env.CALLBACK_URL,
-  scope: 'openid profile email'
+  scope: 'openid'
 }, verify));
 
 function verify(token, tokenSecret, profile, cb) {
@@ -62,7 +62,7 @@ if (!process.env.SILENT) {
 app.use(require('body-parser').urlencoded({ extended: true }));
 app.use(require('express-session')({
   cookie: {
-    httpOnly: true,
+    httpOnly: process.env.SESSION_COOKIE_ALLOW_JS_ACCESS === 'true' ? false : true,
     secure: process.env.EXPRESS_INSECURE === 'true' ? false : true
   },
   resave: true,
