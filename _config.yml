@@ -34,3 +34,7 @@ exclude:
   - npm-debug.log
   - package.json
   - server.js
+  - build.cmd
+  - deploy.cmd
+  - getruby.cmd
+  - README.md
