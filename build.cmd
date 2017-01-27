@@ -4,26 +4,22 @@ setlocal
 
 :Build
 
-pushd demo
-
 call bundle install
 if %ERRORLEVEL% neq 0 goto BuildFail
 
 call bundle exec jekyll build
 if %ERRORLEVEL% neq 0 goto BuildFail
 
-popd
-
 goto BuildSuccess
 
 :BuildFail
 echo.
-echo *** build.demo.cmd FAILED ***
+echo *** BUILD FAILED ***
 goto End
 
 :BuildSuccess
 echo.
-echo *** build.demo.cmd SUCCEEDED ***
+echo *** BUILD SUCCEEDED ***
 goto End
 
 :End
