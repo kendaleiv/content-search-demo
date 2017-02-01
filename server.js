@@ -10,6 +10,7 @@ const shell = require('shelljs');
 const express = require('express');
 const passport = require('passport');
 const OidcStrategy = require('passport-openidconnect').Strategy;
+const request = require('request');
 
 const port = process.env.port || 3000;
 const publicUrls = process.env.PUBLIC_URLS
@@ -59,7 +60,6 @@ if (process.env.TRUST_PROXY) {
 if (!process.env.SILENT) {
   app.use(require('morgan')('combined'));
 }
-app.use(require('body-parser').urlencoded({ extended: true }));
 app.use(require('express-session')({
   cookie: {
     httpOnly: process.env.SESSION_COOKIE_ALLOW_JS_ACCESS === 'true' ? false : true,
@@ -81,14 +81,38 @@ app.get('/callback', passport.authenticate('openidconnect'), (req, res) => {
 
 // Reference: https://github.com/jaredhanson/connect-ensure-login/blob/cdb5769a3db7b8075b2ce90fab647f75f91b3c9a/lib/ensureLoggedIn.js
 app.use((req, res, next) => {
-  if (req.isAuthenticated() || publicUrls.some(u => u && new RegExp(`^${u}`, 'i').test(req.originalUrl))) {
+  if (publicUrls.some(u => u && new RegExp(`^${u}`, 'i').test(req.originalUrl))) {
     next();
-  } else {
-    if (req.session) {
-      req.session.returnTo = req.originalUrl || req.url;
+  } else if (req.headers.authorization && /bearer/i.test(req.headers.authorization)) {
+    if (process.env.TOKEN_VALIDATION_URL) {
+      request.post({
+        url: process.env.TOKEN_VALIDATION_URL,
+        form: {
+          token: req.headers.authorization.split(' ')[1]
+        }
+      }, (tokenErr, tokenRes, tokenBody) => {
+        if (tokenErr || tokenRes.statusCode >= 300) {
+          res.sendStatus(401);
+        } else if (tokenBody.sub) {
+          req.user = { sub: tokenBody.sub };
+          next();
+        } else {
+          res.sendStatus(401);
+        }
+      });
+    } else {
+      res.sendStatus(401);
     }
+  } else {
+    if (req.isAuthenticated()) {
+      next();
+    } else {
+      if (req.session) {
+        req.session.returnTo = req.originalUrl || req.url;
+      }
 
-    res.redirect('/login');
+      res.redirect('/login');
+    }
   }
 });
 
