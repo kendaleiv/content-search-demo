@@ -4,8 +4,9 @@ This is a demo for usage with [ritterim/content-search](https://github.com/ritte
 
 ## Usage
 
-This demo requires Ruby v2.x or greater for Jekyll 3:
+This demo requires Ruby v2.x or greater for Jekyll 3, as well as Node.js v6 (or later, where compatible):
 
 - `gem install bundler`
 - `bundle install`
-- `bundle exec jekyll serve`
+- `npm install`
+- `npm start`
