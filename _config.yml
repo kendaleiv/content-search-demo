@@ -33,6 +33,7 @@ exclude:
   - node_modules/
   - npm-debug.log
   - package.json
+  - npm-shrinkwrap.json
   - server.js
   - build.cmd
   - deploy.cmd
