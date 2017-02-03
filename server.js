@@ -8,10 +8,13 @@ const fs = require('fs');
 const path = require('path');
 const shell = require('shelljs');
 const express = require('express');
+const NodeCache = require('node-cache');
 const passport = require('passport');
 const OidcStrategy = require('passport-openidconnect').Strategy;
 const request = require('request');
 
+const memoryCache = new NodeCache();
+const tokenCacheLifetimeSeconds = process.env.TOKEN_CACHE_SECONDS || 60 * 60; // Default: 1 hour in seconds
 const port = process.env.port || 3000;
 const publicUrls = process.env.PUBLIC_URLS
   ? process.env.PUBLIC_URLS.split(/\s*[,;]\s*/).map(x => x.trim())
@@ -53,6 +56,50 @@ passport.deserializeUser((user, done) => {
 
 const app = express();
 
+// Reference: https://github.com/jaredhanson/connect-ensure-login/blob/cdb5769a3db7b8075b2ce90fab647f75f91b3c9a/lib/ensureLoggedIn.js
+app.authenticateRequestsMiddleware = function(req, res, next) {
+  if (publicUrls.some(u => u && new RegExp(`^${u}`, 'i').test(req.originalUrl))) {
+    next();
+  } else if (req.headers.authorization && /bearer/i.test(req.headers.authorization)) {
+    const token = req.headers.authorization.split(' ')[1];
+
+    if (token && process.env.TOKEN_VALIDATION_URL) {
+      const userFromCache = memoryCache.get(token);
+      if (userFromCache) {
+        req.user = userFromCache;
+        next();
+      } else {
+        request.post({
+          url: process.env.TOKEN_VALIDATION_URL,
+          form: { token: token }
+        }, (tokenErr, tokenRes, tokenBody) => {
+          if (tokenErr || tokenRes.statusCode >= 300) {
+            res.sendStatus(401);
+          } else if (tokenBody.sub) {
+            req.user = { sub: tokenBody.sub };
+            memoryCache.set(token, req.user, tokenCacheLifetimeSeconds);
+            next();
+          } else {
+            res.sendStatus(401);
+          }
+        });
+      }
+    } else {
+      res.sendStatus(401);
+    }
+  } else {
+    if (req.isAuthenticated()) {
+      next();
+    } else {
+      if (req.session) {
+        req.session.returnTo = req.originalUrl || req.url;
+      }
+
+      res.redirect('/login');
+    }
+  }
+};
+
 if (process.env.TRUST_PROXY) {
   app.set('trust proxy', 1);
 }
@@ -79,42 +126,7 @@ app.get('/callback', passport.authenticate('openidconnect'), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
 
-// Reference: https://github.com/jaredhanson/connect-ensure-login/blob/cdb5769a3db7b8075b2ce90fab647f75f91b3c9a/lib/ensureLoggedIn.js
-app.use((req, res, next) => {
-  if (publicUrls.some(u => u && new RegExp(`^${u}`, 'i').test(req.originalUrl))) {
-    next();
-  } else if (req.headers.authorization && /bearer/i.test(req.headers.authorization)) {
-    if (process.env.TOKEN_VALIDATION_URL) {
-      request.post({
-        url: process.env.TOKEN_VALIDATION_URL,
-        form: {
-          token: req.headers.authorization.split(' ')[1]
-        }
-      }, (tokenErr, tokenRes, tokenBody) => {
-        if (tokenErr || tokenRes.statusCode >= 300) {
-          res.sendStatus(401);
-        } else if (tokenBody.sub) {
-          req.user = { sub: tokenBody.sub };
-          next();
-        } else {
-          res.sendStatus(401);
-        }
-      });
-    } else {
-      res.sendStatus(401);
-    }
-  } else {
-    if (req.isAuthenticated()) {
-      next();
-    } else {
-      if (req.session) {
-        req.session.returnTo = req.originalUrl || req.url;
-      }
-
-      res.redirect('/login');
-    }
-  }
-});
+app.use(app.authenticateRequestsMiddleware);
 
 app.use(express.static(path.join(__dirname, '_site')));
 
