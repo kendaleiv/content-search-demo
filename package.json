@@ -2,7 +2,7 @@
   "name": "express-openid-connect-secured-jekyll",
   "version": "0.0.0",
   "private": true,
-  "description": "Jekyll secured with Express using OpenID Connect",
+  "description": "An Express application for securing a Jekyll powered website using OpenID Connect `authorization_flow`, with optional support for JavaScript clients using `client_credentials`.",
   "license": "MIT",
   "scripts": {
     "lint": "eslint *.js",
@@ -16,6 +16,7 @@
     "url": "https://github.com/ritterim"
   },
   "dependencies": {
+    "connect-redis": "^3.2.0",
     "dotenv": "^4.0.0",
     "express": "^4.14.0",
     "express-session": "^1.14.2",
@@ -24,7 +25,8 @@
     "passport": "^0.2.2",
     "passport-openidconnect": "github:jaredhanson/passport-openidconnect#1cf968b6eafd11e4ceb153c2ec1e6c38b69d6592",
     "request": "^2.79.0",
-    "shelljs": "^0.7.5"
+    "shelljs": "^0.7.5",
+    "winston": "^2.3.1"
   },
   "devDependencies": {
     "cross-env": "^3.1.4",
@@ -35,11 +37,11 @@
     "passport-stub": "^1.1.1",
     "require-uncached": "^1.0.3",
     "sinon": "^1.17.7",
-    "supertest": "^2.0.1",
+    "supertest": "^3.0.0",
     "uuid": "^3.0.1"
   },
   "engines": {
-    "node": ">=6 <7",
+    "node": ">=6 <8",
     "npm": ">=3"
   }
 }
